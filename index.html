@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동명중학교 교사 업무 대시보드</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        :root {
+            --primary-color: #4f46e5; --primary-hover: #4338ca; --bg-main: #f8fafc; --card-bg: #ffffff;
+            --text-main: #1e293b; --text-muted: #64748b; --border-color: #e2e8f0; --table-th-bg: #f8fafc;
+            --table-tr-hover: #fafafa; --memo-bg: #f8fafc;
+            --theme-btn-bg: #f1f5f9; --theme-btn-text: #1e293b; --theme-btn-border: #cbd5e1;
+            
+            /* 라이트모드 포스트잇 마감 색상 */
+            --todo-urgent-bg: #fef2f2; --todo-urgent-border: #ef4444; --todo-urgent-text: #1e293b;
+            --todo-warning-bg: #fffbeb; --todo-warning-border: #f59e0b; --todo-warning-text: #1e293b;
+            --todo-normal-bg: #f0fdf4; --todo-normal-border: #22c55e; --todo-normal-text: #1e293b;
+            --todo-none-bg: #f8fafc; --todo-none-border: #cbd5e1; --todo-none-text: #1e293b;
+            --todo-date-bg: rgba(0, 0, 0, 0.04);
+        }
+        [data-theme="dark"] {
+            --primary-color: #818cf8; --primary-hover: #6366f1; --bg-main: #0f172a; --card-bg: #1e293b;
+            --text-main: #f1f5f9; --text-muted: #94a3b8; --border-color: #334155; --table-th-bg: #1e293b;
+            --table-tr-hover: #1e293b; --memo-bg: #0f172a;
+            --theme-btn-bg: #334155; --theme-btn-text: #ffffff; --theme-btn-border: #475569;
+            
+            /* 다크모드 포스트잇 마감 색상 (유색 스타일 유지) */
+            --todo-urgent-bg: #7f1d1d; --todo-urgent-border: #f87171; --todo-urgent-text: #ffffff;
+            --todo-warning-bg: #78350f; --todo-warning-border: #fbbf24; --todo-warning-text: #ffffff;
+            --todo-normal-bg: #064e3b; --todo-normal-border: #34d399; --todo-normal-text: #ffffff;
+            --todo-none-bg: #1e293b; --todo-none-border: #475569; --todo-none-text: #f1f5f9;
+            --todo-date-bg: rgba(255, 255, 255, 0.15);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; letter-spacing: -0.3px; }
+        #zoom-container { display: flex; flex-direction: column; height: 100%; width: 100%; transform-origin: top left; transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+        .top-navbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); }
+        .quick-links { display: flex; gap: 8px; align-items: center; }
+        .link-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; border: none; }
+        .link-btn.portal { background: #e0f2fe; color: #0369a1; }
+        .link-btn.homepage { background: #ffedd5; color: #c2410c; }
+        .link-btn.sheet { background: #dcfce7; color: #15803d; }
+        .link-btn.alimi { background: #f3e8ff; color: #6b21a8; }
+        .link-btn.meal { background: #fef3c7; color: #92400e; }
+        .link-btn.awards { background: #ffe4e6; color: #be123c; }
+        
+        .theme-toggle-btn { 
+            background-color: var(--theme-btn-bg); 
+            color: var(--theme-btn-text) !important; 
+            border: 1px solid var(--theme-btn-border); 
+            padding: 8px 14px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 13px; 
+            font-weight: 700; 
+            transition: all 0.2s ease;
+        }
+        .theme-toggle-btn:hover { opacity: 0.9; }
+
+        .header-clock { font-size: 14px; font-weight: 700; color: var(--primary-color); background: rgba(79, 70, 229, 0.1); padding: 8px 16px; border-radius: 20px; }
+        .dashboard-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .panel { display: flex; flex-direction: column; padding: 24px; overflow-y: auto; }
+        .panel-left { width: 35%; border-right: 1px solid var(--border-color); }
+        .panel-center { width: 35%; border-right: 1px solid var(--border-color); }
+        .panel-right { width: 30%; background: rgba(0, 0, 0, 0.01); }
+        .widget { background: var(--card-bg); border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); border: 1px solid var(--border-color); }
+        .widget-title { font-size: 15px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 2px solid var(--border-color); }
+        .title-guide { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-left: auto; text-align: right; line-height: 1.4; }
+        .schedule-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+        .schedule-table th { background-color: var(--table-th-bg); color: var(--text-muted); font-weight: 600; padding: 12px; border-bottom: 1px solid var(--border-color); }
+        .schedule-table td { padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        .text-center { text-align: center !important; }
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        .status-badge.absence { background: #fef2f2; color: #ef4444; } 
+        .status-badge.late { background: #fff7ed; color: #f97316; }    
+        .status-badge.normal { background: #f0fdf4; color: #15803d; }  
+        .iframe-container { width: 100%; height: 390px; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; background: #fff; }
+        .notice-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; font-size: 13.5px; line-height: 1.6; color: #78350f; font-weight: 500; }
+        .memo-textarea { width: 100%; height: 150px; padding: 14px; border: 1px solid var(--border-color); border-radius: 12px; resize: none; font-size: 13.5px; background: var(--memo-bg); color: var(--text-main); }
+        
+        .todo-input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .todo-input-group input { padding: 11px 14px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 13px; background: var(--memo-bg); color: var(--text-main); }
+        .todo-date-wrapper { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); font-weight: 600; }
+        .todo-date-wrapper input { flex: 1; }
+        .todo-input-group button { padding: 12px; background: var(--text-main); color: var(--card-bg); border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .todo-list { display: flex; flex-direction: column; gap: 12px; }
+        
+        /* 테마변수를 적용한 동적 포스트잇 컴포넌트 */
+        .postit { padding: 16px; border-radius: 10px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s ease; }
+        .postit.todo-urgent { background-color: var(--todo-urgent-bg); border: 1px solid var(--todo-urgent-border); border-left: 5px solid var(--todo-urgent-border); color: var(--todo-urgent-text); }
+        .postit.todo-warning { background-color: var(--todo-warning-bg); border: 1px solid var(--todo-warning-border); border-left: 5px solid var(--todo-warning-border); color: var(--todo-warning-text); }
+        .postit.todo-normal { background-color: var(--todo-normal-bg); border: 1px solid var(--todo-normal-border); border-left: 5px solid var(--todo-normal-border); color: var(--todo-normal-text); }
+        .postit.todo-none { background-color: var(--todo-none-bg); border: 1px solid var(--todo-none-border); border-left: 5px solid var(--todo-none-border); color: var(--todo-none-text); }
+
+        .postit-checkbox { margin-top: 3px; cursor: pointer; width: 16px; height: 16px; }
+        .postit-content { flex: 1; font-size: 13.5px; word-break: break-all; line-height: 1.5; color: inherit; }
+        .postit-date { font-size: 11px; color: inherit; opacity: 0.9; margin-top: 6px; background: var(--todo-date-bg); padding: 2px 6px; border-radius: 4px; display: inline-block; font-weight: 600; }
+        .delete-btn { background: none; border: none; color: #ef4444; cursor: pointer; display: none; font-size: 14px; }
+        .control-bar { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 12px; background: #0f172a; padding: 10px 20px; border-radius: 12px; align-items: center; z-index: 1000; color: white; font-size: 12px; }
+        .control-bar button { background: rgba(255,255,255,0.12); border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+        .zoom-info { font-weight: 700; color: #fde047; }
+    </style>
+</head>
+<body>
+
+    <div id="zoom-container">
+        <div class="top-navbar">
+            <div class="quick-links">
+                <a href="https://dje.eduptl.kr/" target="_blank" class="link-btn portal">📢 대전교육청 업무포털</a>
+                <a href="https://dongmyungms.djsch.kr/" target="_blank" class="link-btn homepage">🏫 동명중 홈페이지</a>
+                <a href="https://docs.google.com/spreadsheets/d/1L6Z1zbzP8mKjen89hJRR-i96SgKtaCqlDabc2O7o8lk/edit?gid=538476521#gid=538476521" target="_blank" class="link-btn sheet">📊 동명중 업무시트</a>
+                <a href="https://www.ealimi.com" target="_blank" class="link-btn alimi">📱 e알리미</a>
+                <button type="button" class="link-btn meal" onclick="openMealPopup()">🍱 급식 식단</button>
+                <a href="https://dmms6696.github.io/dmawards/" target="_blank" rel="noopener noreferrer" class="link-btn awards">💐 덕분에</a>
+                <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn">🌙 다크모드 켜기</button>
+            </div>
+            <div class="header-clock" id="live-clock">2026년 00월 00일 (일) 00:00:00</div>
+        </div>
+
+        <div class="dashboard-container" id="dashboard">
+            <div class="panel panel-left">
+                <div class="widget">
+                    <div class="widget-title">📅 오늘의 학사 일정</div>
+                    <table class="schedule-table">
+                        <thead><tr><th style="width:25%">일정</th><th style="width:35%">내용</th><th style="width:20%">시간</th><th style="width:20%">장소</th></tr></thead>
+                        <tbody id="schedule-body"><tr><td colspan="4" class="text-center" style="color: var(--text-muted);">로드 중...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="widget">
+                    <div class="widget-title">⏰ 오늘의 시간표 <span class="title-guide">(학교코드: <strong>75493</strong>)</span></div>
+                    <div class="iframe-container"><iframe src="about:blank" width="100%" height="100%" frameborder="0" id="comtime-frame"></iframe></div>
+                </div>
+            </div>
+
+            <div class="panel panel-center">
+                <div class="widget">
+                    <div class="widget-title">📌 교무실 전체 공지사항</div>
+                    <div class="notice-box">로드 중...</div>
+                </div>
+                <div class="widget">
+                    <div class="widget-title">🧑‍🎓 오늘의 출결 현황</div>
+                    <div style="max-height: 180px; overflow-y: auto;">
+                        <table class="schedule-table">
+                            <thead><tr><th class="text-center" style="width:30%">학번</th><th class="text-center" style="width:35%">이름</th><th class="text-center" style="width:35%">출결 현황</th></tr></thead>
+                            <tbody id="attendance-body"><tr><td colspan="3" class="text-center" style="color: var(--text-muted);">로드 중...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="widget">
+                    <div class="widget-title">📝 나만의 임시 메모장</div>
+                    <textarea class="memo-textarea" id="my-memo" placeholder="업무 내용을 기록하세요."></textarea>
+                </div>
+            </div>
+
+            <!-- 👉 '해야 할 업무' 위젯 영역 복원 안내 문구 추가 -->
+            <div class="panel panel-right">
+                <div class="widget" style="box-shadow: none; background: transparent; border: none; padding: 0;">
+                    <div class="widget-title">
+                        <span>📌 해야 할 업무</span>
+                        <span class="title-guide">💡 마감기한 미선택 시<br>기본 업무로 등록</span>
+                    </div>
+                    <div class="todo-input-group">
+                        <input type="text" id="todo-text" placeholder="새로운 업무 입력">
+                        <div class="todo-date-wrapper"><span>📅 마감기한:</span><input type="date" id="todo-date"></div>
+                        <button onclick="addTodo()">업무 추가</button>
+                    </div>
+                    <div class="todo-list" id="todo-list-container"></div>
+                </div>
+            </div>
+
+            <div class="control-bar">
+                <button onclick="toggleFullScreen()">🖥️ 전체화면</button><span style="color: rgba(255,255,255,0.2)">|</span>
+                <span>🔍 화면 줌:</span><button onclick="adjustZoom(-0.05)">➖ 축소</button>
+                <span class="zoom-info" id="zoom-percent">100%</span><button onclick="adjustZoom(0.05)">➕ 확대</button>
+                <button onclick="resetZoom()">기본</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function initTheme() {
+            const savedTheme = localStorage.getItem('dashboard_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-toggle-btn').innerText = savedTheme === 'dark' ? "☀️ 라이트모드 켜기" : "🌙 다크모드 켜기";
+        }
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            let newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('dashboard_theme', newTheme);
+            document.getElementById('theme-toggle-btn').innerText = newTheme === 'dark' ? "☀️ 라이트모드 켜기" : "🌙 다크모드 켜기";
+        }
+        function updateClock() {
+            const now = new Date();
+            const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+            document.getElementById('live-clock').innerText = `${now.getFullYear()}년 ${String(now.getMonth() + 1).padStart(2, '0')}월 ${String(now.getDate()).padStart(2, '0')}일 (${weekDays[now.getDay()]}) ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        }
+
+        const memoTextarea = document.getElementById('my-memo');
+        memoTextarea.value = localStorage.getItem('teacher_memo') || '';
+        memoTextarea.addEventListener('input', () => { localStorage.setItem('teacher_memo', memoTextarea.value); });
+
+        let todos = JSON.parse(localStorage.getItem('teacher_todos')) || [];
+        function saveTodos() { localStorage.setItem('teacher_todos', JSON.stringify(todos)); renderTodos(); }
+        function addTodo() {
+            const textInput = document.getElementById('todo-text'); const dateInput = document.getElementById('todo-date');
+            if (!textInput.value.trim()) { alert('업무 내용을 입력해 주세요.'); return; }
+            todos.push({ id: Date.now(), text: textInput.value, dueDate: dateInput.value || null, checked: false, showTrash: false });
+            textInput.value = ''; dateInput.value = ''; saveTodos();
+        }
+        
+        function renderTodos() {
+            const container = document.getElementById('todo-list-container'); container.innerHTML = '';
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const sortedTodos = [...todos].sort((a, b) => a.dueDate && b.dueDate ? new Date(a.dueDate) - new Date(b.dueDate) : a.dueDate ? -1 : 1);
+            
+            sortedTodos.forEach(todo => {
+                const postit = document.createElement('div');
+                
+                let colorClass = 'todo-none';
+                if (todo.dueDate) {
+                    const dueDate = new Date(todo.dueDate);
+                    dueDate.setHours(0, 0, 0, 0);
+                    const diffTime = dueDate - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diffDays <= 0) {
+                        colorClass = 'todo-urgent';
+                    } else if (diffDays <= 3) {
+                        colorClass = 'todo-warning';
+                    } else {
+                        colorClass = 'todo-normal';
+                    }
+                }
+                postit.className = `postit ${colorClass}`;
+
+                const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.className = 'postit-checkbox'; checkbox.checked = todo.checked;
+                checkbox.onclick = () => { if (checkbox.checked && confirm('삭제하시겠습니까?')) { todos = todos.filter(t => t.id !== todo.id); } else { todo.checked = checkbox.checked; todo.showTrash = checkbox.checked; } saveTodos(); };
+                
+                const contentDiv = document.createElement('div'); contentDiv.className = 'postit-content'; contentDiv.innerText = todo.text;
+                if (todo.dueDate) { const dateDiv = document.createElement('div'); dateDiv.className = 'postit-date'; dateDiv.innerText = `⏳ 마감: ${todo.dueDate}`; contentDiv.appendChild(dateDiv); }
+                
+                const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-btn'; deleteBtn.innerHTML = '🗑️'; deleteBtn.onclick = () => { todos = todos.filter(t => t.id !== todo.id); saveTodos(); };
+                if (todo.showTrash) deleteBtn.style.display = 'block';
+                
+                postit.appendChild(checkbox); postit.appendChild(contentDiv); postit.appendChild(deleteBtn); container.appendChild(postit);
+            });
+        }
+        
+        function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+        let currentZoom = parseFloat(localStorage.getItem('dashboard_zoom')) || 1.0;
+        function applyZoom() {
+            const container = document.getElementById('zoom-container'); container.style.transform = `scale(${currentZoom})`;
+            container.style.width = `${100 / currentZoom}%`; container.style.height = `${100 / currentZoom}%`;
+            document.getElementById('zoom-percent').innerText = `${Math.round(currentZoom * 100)}%`; localStorage.setItem('dashboard_zoom', currentZoom);
+        }
+        function adjustZoom(amount) { currentZoom = Math.min(Math.max(currentZoom + amount, 0.6), 1.5); applyZoom(); }
+        function resetZoom() { currentZoom = 1.0; applyZoom(); }
+
+        const GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxF9H6ImmI7rI3NlFCnyWA72EsdP4Q877Ii40U7ClcyWvAzHsq2TVDsRrIQhKkhFPU/exec";
+
+        document.getElementById('comtime-frame').src = "http://컴시간교사.kr"; 
+
+        function fetchDashboardData() {
+            fetch(GOOGLE_SHEET_WEBAPP_URL)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('schedule-body'); tbody.innerHTML = ''; 
+                    if (data.schedule && data.schedule.length > 0) {
+                        data.schedule.forEach(item => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `<td><strong>${item.title}</strong></td><td>${item.content}</td><td class="text-center"><span style="color:var(--primary-color); font-weight:700;">${item.time}</span></td><td class="text-center">${item.location}</td>`;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center" style="color: var(--text-muted); padding:20px;">오늘 예정된 학사 일정이 없습니다.</td></tr>`;
+                    }
+
+                    const noticeBox = document.querySelector('.notice-box');
+                    if (data.notice && data.notice.length > 0) {
+                        let noticeHTML = `<strong>📢 전체 공지사항</strong><br><br>`;
+                        data.notice.forEach(msg => { if(msg.trim()) noticeHTML += `• ${msg.replace(/\n/g, '<br>')}<br><br>`; });
+                        noticeBox.innerHTML = noticeHTML;
+                    } else { noticeBox.innerHTML = `<strong>📌 공지사항</strong><br><br>등록된 공지사항이 없습니다.`; }
+
+                    const attendanceBody = document.getElementById('attendance-body'); attendanceBody.innerHTML = '';
+                    if (data.attendance && data.attendance.length > 0) {
+                        data.attendance.forEach(student => {
+                            const tr = document.createElement('tr');
+                            let badgeClass = 'normal';
+                            if (['결석', '미인정결석', '질병결석'].includes(student.status)) badgeClass = 'absence';
+                            else if (['지각', '조퇴', '결과'].includes(student.status)) badgeClass = 'late';
+                            tr.innerHTML = `<td class="text-center">${student.number}</td><td class="text-center"><strong>${student.name}</strong></td><td class="text-center"><span class="status-badge ${badgeClass}">${student.status || '출석'}</span></td>`;
+                            attendanceBody.appendChild(tr);
+                        });
+                    } else { attendanceBody.innerHTML = `<tr><td colspan="3" class="text-center" style="color: var(--text-muted); padding:15px;">등록된 출결 변동 사항이 없습니다.</td></tr>`; }
+                })
+                .catch(() => {
+                    document.getElementById('schedule-body').innerHTML = `<tr><td colspan="4" class="text-center" style="color:red; font-size:12px;">학사 일정 로드 실패</td></tr>`;
+                    document.getElementById('attendance-body').innerHTML = `<tr><td colspan="3" class="text-center" style="color:red; font-size:12px;">출결 데이터 로드 실패</td></tr>`;
+                });
+        }
+
+
+        const NAVER_MEAL_URL = "https://pcmap.place.naver.com/school/12018505/meal?abtExp=N-PLCPWL-RANK-26%3A1%5EN-PLC-AD-UI-26%3A4&bk_query=%EB%8F%99%EB%AA%85%EC%A4%91%ED%95%99%EA%B5%90&entry=pll&fromNxList=true&fromPanelNum=2&timestamp=202606171351&locale=ko&svcName=map_pcv5&searchText=%EB%8F%99%EB%AA%85%EC%A4%91%ED%95%99%EA%B5%90";
+        const NEIS_MEAL_API_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo";
+        // 나이스 인증키가 있으면 따옴표 안에 넣으세요.
+        // 비워 두면 KEY 파라미터를 아예 보내지 않아 공개 샘플 호출 방식으로 시도합니다.
+        const NEIS_API_KEY = "";
+        const NEIS_MEAL_SCHOOL = {
+            ATPT_OFCDC_SC_CODE: "G10",   // 대전광역시교육청
+            SD_SCHUL_CODE: "7441032"  // 동명중학교(대전)
+        };
+
+        function getTodayYmd() {
+            const now = new Date();
+            return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        }
+
+        function formatYmd(ymd) {
+            if (!ymd || ymd.length !== 8) return ymd || '';
+            const y = ymd.substring(0, 4);
+            const m = ymd.substring(4, 6);
+            const d = ymd.substring(6, 8);
+            const date = new Date(Number(y), Number(m) - 1, Number(d));
+            const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+            return `${y}.${m}.${d}.(${weekDays[date.getDay()]})`;
+        }
+
+        function stripMealText(htmlText) {
+            return String(htmlText || '')
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/<[^>]*>/g, '')
+                .split('\n')
+                .map(line => line.trim())
+                .filter(Boolean)
+                .join('\n');
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function writeMealPopup(popup, contentHtml) {
+            popup.document.open();
+            popup.document.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>오늘의 급식 식단</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Pretendard', 'Malgun Gothic', sans-serif; }
+        body { margin: 0; background: #fffbeb; color: #1f2937; }
+        .meal-wrap { padding: 22px; }
+        .meal-card { background: #ffffff; border: 1px solid #fde68a; border-radius: 18px; padding: 22px; box-shadow: 0 10px 25px rgba(146, 64, 14, 0.12); }
+        h1 { margin: 0 0 6px; font-size: 22px; color: #92400e; }
+        .date { margin-bottom: 18px; color: #6b7280; font-size: 13px; font-weight: 700; }
+        .meal-list { white-space: pre-line; line-height: 1.8; font-size: 16px; font-weight: 700; }
+        .sub-info { margin-top: 18px; padding-top: 14px; border-top: 1px dashed #fbbf24; color: #6b7280; font-size: 12px; line-height: 1.6; }
+        .error { color: #b91c1c; line-height: 1.7; font-weight: 700; }
+        .meal-actions { display: flex; gap: 8px; margin-top: 18px; }
+        button, a.action-link { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 10px; padding: 10px 13px; background: #92400e; color: white; font-size: 13px; font-weight: 800; text-decoration: none; cursor: pointer; }
+        a.action-link.secondary { background: #f59e0b; }
+    </style>
+</head>
+<body>
+    <div class="meal-wrap">
+        <div class="meal-card">
+            ${contentHtml}
+        </div>
+    </div>
+</body>
+</html>`);
+            popup.document.close();
+        }
+
+        function openMealPopup() {
+            const popup = window.open('', 'todayMealPopup', 'width=460,height=620,left=200,top=120,resizable=yes,scrollbars=yes');
+            if (!popup) {
+                alert('팝업창이 차단되었습니다. 브라우저에서 이 페이지의 팝업을 허용해 주세요.');
+                return;
+            }
+
+            writeMealPopup(popup, `
+                <h1>🍱 오늘의 급식 식단</h1>
+                <div class="date">불러오는 중...</div>
+                <div class="meal-list">잠시만 기다려 주세요.</div>
+            `);
+
+            fetchTodayMeal()
+                .then(meal => {
+                    const menuText = meal.menu ? meal.menu.split('\n').map(item => `• ${escapeHtml(item)}`).join('\n') : '등록된 식단이 없습니다.';
+                    const calorie = meal.calorie ? `<div>열량: ${escapeHtml(meal.calorie)}</div>` : '';
+                    writeMealPopup(popup, `
+                        <h1>🍱 오늘의 급식 식단</h1>
+                        <div class="date">${escapeHtml(formatYmd(meal.date))} · ${escapeHtml(meal.mealName || '중식')}</div>
+                        <div class="meal-list">${menuText}</div>
+                        <div class="sub-info">
+                            ${calorie}
+                            <div>식단 정보는 나이스 급식식단정보 기준으로 불러옵니다.</div>
+                        </div>
+                        <div class="meal-actions">
+                            <button onclick="window.close()">닫기</button>
+                            <a class="action-link secondary" href="${NAVER_MEAL_URL}" target="_blank">네이버 원문 보기</a>
+                        </div>
+                    `);
+                })
+                .catch(err => {
+                    writeMealPopup(popup, `
+                        <h1>🍱 오늘의 급식 식단</h1>
+                        <div class="date">${escapeHtml(formatYmd(getTodayYmd()))}</div>
+                        <div class="error">급식 식단을 자동으로 불러오지 못했습니다.<br>${escapeHtml(err.message || err)}</div>
+                        <div class="sub-info">학교망 또는 브라우저 보안 설정에 따라 외부 급식 데이터를 차단할 수 있습니다.</div>
+                        <div class="meal-actions">
+                            <button onclick="location.reload()">다시 시도</button>
+                            <a class="action-link secondary" href="${NAVER_MEAL_URL}" target="_blank">네이버 급식 페이지 열기</a>
+                        </div>
+                    `);
+                });
+        }
+
+        async function fetchTodayMeal() {
+            const ymd = getTodayYmd();
+            const params = new URLSearchParams({
+                Type: 'json',
+                pIndex: '1',
+                pSize: '5',
+                ATPT_OFCDC_SC_CODE: NEIS_MEAL_SCHOOL.ATPT_OFCDC_SC_CODE,
+                SD_SCHUL_CODE: NEIS_MEAL_SCHOOL.SD_SCHUL_CODE,
+                MLSV_YMD: ymd
+            });
+
+            if (NEIS_API_KEY && NEIS_API_KEY.trim()) {
+                params.set('KEY', NEIS_API_KEY.trim());
+            }
+
+            const response = await fetch(`${NEIS_MEAL_API_URL}?${params.toString()}`);
+            if (!response.ok) throw new Error(`급식 API 응답 오류: ${response.status}`);
+
+            const data = await response.json();
+            if (data.RESULT && data.RESULT.CODE === 'INFO-200') {
+                return { date: ymd, mealName: '중식', menu: '', calorie: '' };
+            }
+
+            const row = data.mealServiceDietInfo?.[1]?.row?.[0];
+            if (!row) {
+                const resultCode = data.RESULT?.CODE || data.mealServiceDietInfo?.[0]?.head?.[1]?.RESULT?.CODE || '';
+                const resultMessage = data.RESULT?.MESSAGE || data.mealServiceDietInfo?.[0]?.head?.[1]?.RESULT?.MESSAGE || '오늘 날짜의 급식 데이터가 없습니다.';
+                if (resultCode === 'ERROR-290') {
+                    throw new Error('나이스 인증키가 없거나 유효하지 않습니다. 코드에서 NEIS_API_KEY 값을 실제 인증키로 바꾸거나, 아래 네이버 급식 페이지를 이용해 주세요.');
+                }
+                throw new Error(resultCode ? `${resultMessage} (${resultCode})` : resultMessage);
+            }
+
+            return {
+                date: row.MLSV_YMD || ymd,
+                mealName: row.MMEAL_SC_NM || '중식',
+                menu: stripMealText(row.DDISH_NM),
+                calorie: row.CAL_INFO || ''
+            };
+        }
+
+        initTheme(); updateClock(); setInterval(updateClock, 1000); renderTodos(); applyZoom(); 
+        fetchDashboardData(); setInterval(fetchDashboardData, 60000);
+    </script>
+</body>
+</html>
